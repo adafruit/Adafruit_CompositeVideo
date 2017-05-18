@@ -115,6 +115,11 @@ boolean Adafruit_CompositeVideo::begin(void) {
   while(DAC->STATUS.bit.SYNCBUSY);
 #endif
 
+#ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
+  pinMode(40, OUTPUT);
+  digitalWrite(40, LOW); // Switch off speaker (DAC to A0 pin only)
+#endif
+
   // DMA transfer job is NOT started here!  That's done in subclass
   // begin() function, after descriptor table is filled.
 
@@ -310,13 +315,7 @@ boolean Adafruit_NTSC40x24::begin(void) {
 
   clear(); // Initialize frame buffer
 
-#ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
-  pinMode(40, OUTPUT);
-  digitalWrite(40, LOW);
-#endif
-
-  dma.start_transfer_job();
-  return true;
+  return (dma.start_transfer_job() == STATUS_OK);
 }
 
 void Adafruit_NTSC40x24::clear(void) {
