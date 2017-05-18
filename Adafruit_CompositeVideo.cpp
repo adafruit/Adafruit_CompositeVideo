@@ -48,8 +48,13 @@ static const struct {
 // NTSC-SPECIFIC STUFF -----------------------------------------------------
 
 // NTSC sync (NS), blank (N_), black (NK) and white (NW) levels
+#if DAC_MAX == 1023
 #define IRE(N) (((DAC_MAX * (40 + N)) + 70) / 140)
 static const uint16_t NS=IRE(-40), N_=IRE(0), NK=IRE(8), NW=IRE(100);
+#else
+// Better (?) sync & ref black voltages:
+static const uint16_t NS=0, N_=45, NK=60, NW=310;
+#endif
 
 // Adafruit_CompositeVideo class -------------------------------------------
 //
