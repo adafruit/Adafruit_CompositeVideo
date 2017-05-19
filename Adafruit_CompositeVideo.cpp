@@ -113,16 +113,15 @@ boolean Adafruit_CompositeVideo::begin(void) {
 
   // DAC INIT --------------------------------------------------------------
 
+#ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
+  pinMode(40, OUTPUT);
+  digitalWrite(40, LOW);     // Switch off speaker (DAC to A0 pin only)
+#endif
   analogWriteResolution(10); // Let Arduino core initialize the DAC,
   analogWrite(A0, 512);      // ain't nobody got time for that!
 #if DAC_MAX == 1023
   DAC->CTRLB.bit.REFSEL = 0; // VMAX = 1.0V
   while(DAC->STATUS.bit.SYNCBUSY);
-#endif
-
-#ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
-  pinMode(40, OUTPUT);
-  digitalWrite(40, LOW); // Switch off speaker (DAC to A0 pin only)
 #endif
 
   // DMA transfer job is NOT started here!  That's done in subclass
