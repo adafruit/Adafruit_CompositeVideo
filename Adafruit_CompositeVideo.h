@@ -27,7 +27,6 @@ class Adafruit_CompositeVideo : public Adafruit_GFX {
  protected:
   const uint8_t     mode;
   Adafruit_ZeroDMA  dma;
-  uint8_t          *ptr;
   DmacDescriptor   *descriptor;
   uint16_t         *frameBuffer;
 };

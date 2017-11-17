@@ -16,6 +16,7 @@
 #include <Adafruit_ZeroDMA.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_CompositeVideo.h>
+#include <malloc.h> // memalign() function
 
 // The DAC has an option for a 1.0 Volt reference selection (exactly what's
 // needed for composite video) -- but, BUT -- this is NOT used by default.
@@ -66,27 +67,26 @@ static const uint16_t NS=0, N_=45, NK=60, NW=310;
 // Constructor
 Adafruit_CompositeVideo::Adafruit_CompositeVideo(
   uint8_t mode, int16_t width, int16_t height) :
-  Adafruit_GFX(width, height), mode(mode), ptr(NULL) { }
+  Adafruit_GFX(width, height), mode(mode), descriptor(NULL) { }
 
 boolean Adafruit_CompositeVideo::begin(void) {
-  if(ptr) return true; // Don't double-init!
+  if(descriptor) return true; // Don't double-init!
 
   // DMA init --------------------------------------------------------------
 
-  dma.configure_peripheraltrigger(TC5_DMAC_ID_OVF);
-  dma.configure_triggeraction(DMA_TRIGGER_ACTON_BEAT);
-  if(dma.allocate() == DMA_INVALID_CHANNEL) return false; // Alloc resource
+  dma.setTrigger(TC5_DMAC_ID_OVF);
+  dma.setAction(DMA_TRIGGER_ACTON_BEAT);
+  if(dma.allocate() != DMA_STATUS_OK) return false;
 
   // Big allocation --------------------------------------------------------
 
-  if(!(ptr = (uint8_t *)malloc(1 + // +1 byte to allow 16-bit alignment
+  // DMA descriptor list MUST be 128-bit (16 byte) aligned!
+  if(!(descriptor = (DmacDescriptor *)memalign(16,
     sizeof(DmacDescriptor) * videoSpec[mode].numDescriptors +
     sizeof(uint16_t)       * videoSpec[mode].rowPixelClocks * HEIGHT)))
       return false;
 
-  // DMA descriptor list MUST be word-aligned from ptr!
   // Frame buffer follows descriptor list.
-  descriptor  = (DmacDescriptor *)&ptr[(uint32_t)ptr & 1]; // Word-align!
   frameBuffer = (uint16_t *)&descriptor[videoSpec[mode].numDescriptors];
 
   // Timer init ------------------------------------------------------------
@@ -114,8 +114,8 @@ boolean Adafruit_CompositeVideo::begin(void) {
   // DAC INIT --------------------------------------------------------------
 
 #ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
-  pinMode(40, OUTPUT);
-  digitalWrite(40, LOW);     // Switch off speaker (DAC to A0 pin only)
+  pinMode(11, OUTPUT);
+  digitalWrite(11, LOW);     // Switch off speaker (DAC to A0 pin only)
 #endif
   analogWriteResolution(10); // Let Arduino core initialize the DAC,
   analogWrite(A0, 512);      // ain't nobody got time for that!
@@ -253,62 +253,66 @@ Adafruit_NTSC40x24::Adafruit_NTSC40x24() :
 boolean Adafruit_NTSC40x24::begin(void) {
   if(!Adafruit_CompositeVideo::begin()) return false;
 
-  struct dma_descriptor_config cfg;
-
   // FYI, the DMA descriptor table is what uses all the memory here.
   // 436 entries * 20 bytes each = 8720 bytes (+ 1 for word alignment).
   // Framebuffer for NTSC40x24 mode (actually 50 pixel clocks wide)
   // is 50 words (2 bytes ea) * 24 lines = 2400 bytes.
   // 8720 + 1 + 2400 = 11,121 bytes!
 
+  DmacDescriptor *desc;
+
   for(uint16_t i=0; i<videoSpec[mode].numDescriptors; i++) {
-    dma_descriptor_get_config_defaults(&cfg);
-    cfg.beat_size            = DMA_BEAT_SIZE_HWORD;
-    cfg.src_increment_enable = true;
-    cfg.dst_increment_enable = false;
-    cfg.destination_address  = (uint32_t)&DAC->DATA.reg;
+    desc                      = &descriptor[i];
+    desc->BTCTRL.bit.VALID    = true;
+    desc->BTCTRL.bit.EVOSEL   = DMA_EVENT_OUTPUT_DISABLE;
+    desc->BTCTRL.bit.BLOCKACT = DMA_BLOCK_ACTION_NOACT;
+    desc->BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_HWORD;
+    desc->BTCTRL.bit.SRCINC   = true;
+    desc->BTCTRL.bit.DSTINC   = false;
+    desc->BTCTRL.bit.STEPSEL  = DMA_STEPSEL_DST;
+    desc->BTCTRL.bit.STEPSIZE = DMA_ADDRESS_INCREMENT_STEP_SIZE_1;
+    desc->DSTADDR.reg         = (uint32_t)&DAC->DATA.reg;
+    desc->DESCADDR.reg        = (uint32_t)&descriptor[i + 1];
+
     if(i == 0) {
       // Descriptor 0 is the odd field vertical sync
-      cfg.source_address       = (uint32_t)NTSC40x24vsyncOdd;
-      cfg.block_transfer_count =
+      desc->SRCADDR.reg         = (uint32_t)NTSC40x24vsyncOdd;
+      desc->BTCNT.reg           =
         sizeof(NTSC40x24vsyncOdd) / sizeof(NTSC40x24vsyncOdd[0]);
     } else if(i <= 216) {
       // Descriptors 1-216 are pixel data
       uint8_t row = (i - 1) / 9; // 0 to 23
-      cfg.source_address       = (uint32_t)&frameBuffer[
+      desc->SRCADDR.reg         = (uint32_t)&frameBuffer[
         row * videoSpec[mode].rowPixelClocks];
-      cfg.block_transfer_count = videoSpec[mode].rowPixelClocks;
+      desc->BTCNT.reg           = videoSpec[mode].rowPixelClocks;
     } else if(i == 217) {
       // Descriptor 217 is vsync hack (will go away later)
-      cfg.beat_size            = DMA_BEAT_SIZE_BYTE;
-      cfg.src_increment_enable = false;
-      cfg.source_address       = (uint32_t)&vBlank1;
-      cfg.block_transfer_count = 1;
-      cfg.destination_address  = (uint32_t)&vBlank;
+      desc->BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_BYTE;
+      desc->BTCTRL.bit.SRCINC   = false;
+      desc->SRCADDR.reg         = (uint32_t)&vBlank1;
+      desc->BTCNT.reg           = 1;
+      desc->DSTADDR.reg         = (uint32_t)&vBlank;
     } else if(i == 218) {
       // Descriptor 218 is the even field vertical sync
-      cfg.source_address       = (uint32_t)NTSC40x24vsyncEven;
-      cfg.block_transfer_count =
+      desc->SRCADDR.reg          = (uint32_t)NTSC40x24vsyncEven;
+      desc->BTCNT.reg            =
         sizeof(NTSC40x24vsyncEven) / sizeof(NTSC40x24vsyncEven[0]);
     } else if(i <= 434) {
       // Descriptors 219-434 are pixel data
       uint8_t row = (i - 219) / 9; // 0 to 23
-      cfg.source_address       = (uint32_t)&frameBuffer[
+      desc->SRCADDR.reg          = (uint32_t)&frameBuffer[
         row * videoSpec[mode].rowPixelClocks];
-      cfg.block_transfer_count = videoSpec[mode].rowPixelClocks;
+      desc->BTCNT.reg           = videoSpec[mode].rowPixelClocks;
     } else {
       // Last descriptor (435) is vsync hack (also going away later)
-      cfg.beat_size            = DMA_BEAT_SIZE_BYTE;
-      cfg.src_increment_enable = false;
-      cfg.source_address       = (uint32_t)&vBlank2;
-      cfg.block_transfer_count = 1;
-      cfg.destination_address  = (uint32_t)&vBlank;
+      desc->BTCTRL.bit.BEATSIZE = DMA_BEAT_SIZE_BYTE;
+      desc->BTCTRL.bit.SRCINC   = false;
+      desc->SRCADDR.reg         = (uint32_t)&vBlank2;
+      desc->BTCNT.reg           = 1;
+      desc->DSTADDR.reg         = (uint32_t)&vBlank;
     }
-    if(cfg.src_increment_enable)
-      cfg.source_address += 2 * cfg.block_transfer_count;
-
-    dma_descriptor_create(&descriptor[i], &cfg);
-    dma.add_descriptor(&descriptor[i]);
+    if(desc->BTCTRL.bit.SRCINC)
+      desc->SRCADDR.reg += 2 * desc->BTCNT.reg;
   }
 
   // Link last DMA descriptor back to first.  Once the transfer job is
@@ -317,9 +321,22 @@ boolean Adafruit_NTSC40x24::begin(void) {
   descriptor[videoSpec[mode].numDescriptors - 1].DESCADDR.reg =
     (uint32_t)&descriptor[0];
 
+  // The DMA library needs to think it's allocated at least one
+  // valid descriptor, so we do that here (though it's never used)
+  (void)dma.addDescriptor(NULL, NULL, 42, DMA_BEAT_SIZE_BYTE, false, false);
+
+  // Point DMA descriptor base address to our descriptor list
+  __disable_irq();
+  __DMB();
+  DMAC->CTRL.reg = 0; // Disable DMA controller
+  DMAC->BASEADDR.bit.BASEADDR = (uint32_t)descriptor;
+  DMAC->CTRL.reg = DMAC_CTRL_DMAENABLE | DMAC_CTRL_LVLEN(0xF);
+  __DMB();
+  __enable_irq();
+
   clear(); // Initialize frame buffer
 
-  return (dma.start_transfer_job() == STATUS_OK);
+  return (dma.startJob() == DMA_STATUS_OK);
 }
 
 void Adafruit_NTSC40x24::clear(void) {
