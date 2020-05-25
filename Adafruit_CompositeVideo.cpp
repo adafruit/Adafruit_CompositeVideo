@@ -1,17 +1,38 @@
-// -------------------------------------------------------------------------
-// DMA-driven composite video library for M0 microcontrollers
-// (Circuit Playground Express, Feather M0, Arduino Zero, etc.).
-// Gator-clip composite video 'tip' to pin A0, 'ring' to GND.
-// Handles grayscale NTSC video, 40x24 pixels, usable area may be smaller
-// due to overscan.
-//
-// Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
-// Adafruit invests time and resources providing this open source code,
-// please support Adafruit and open-source hardware by purchasing
-// products from Adafruit!
-//
-// MIT license, all text above must be included in any redistribution
-// -------------------------------------------------------------------------
+/*!
+ * @file Adafruit_CompositeVideo.cpp
+ *
+ * @mainpage DMA-driven composite video library for M0 microcontrollers.
+ *
+ * @section intro_sec Introduction
+ *
+ * DMA-driven composite video library for M0 microcontrollers
+ * (Circuit Playground Express, Feather M0, Arduino Zero, etc.).
+ * Gator-clip composite video 'tip' to pin A0, 'ring' to GND.
+ * Handles grayscale NTSC video, 40x24 pixels, usable area may be smaller
+ * due to overscan.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * @section dependencies Dependencies
+ *
+ * This library depends on <a
+ * href="https://github.com/adafruit/Adafruit_ZeroDMA">Adafruit_ZeroDMA</a>
+ * and <a
+ * href="https://github.com/adafruit/Adafruit-GFX-Library">Adafruit_GFX</a>
+ * being present on your system. Please make sure you have installed the
+ * latest versions before using this library.
+ *
+ * @section author Author
+ *
+ * Written by Phil Burgess / Paint Your Dragon for Adafruit Industries.
+ *
+ * @section license License
+ *
+ * MIT license, all text above must be included in any redistribution
+ *
+ */
 
 #include <Adafruit_CompositeVideo.h>
 #include <Adafruit_GFX.h>
@@ -28,14 +49,14 @@
 // Allowing space for the sync and blank voltages, there are ~220 available
 // brightness levels (not 256).  GFX functions take care of brightness
 // scaling, so use 0 for black and 255 for white as normal.
-//#define DAC_MAX 1023           // Use 1.0 V DAC analog ref
-#define DAC_MAX (1023 * 10 / 33) // Use subset of 3.3V DAC
+//#define DAC_MAX 1023           ///< Use 1.0 V DAC analog ref
+#define DAC_MAX (1023 * 10 / 33) ///< Use subset of 3.3V DAC
 
 // Currently only one video format & resolution is supported, and maybe
 // that's all that will be implemented.  But if any others happen in the
 // future, this is where they'll start, with a unique index here that
 // points into videoSpec[] table below.
-#define MODE_NTSC40x24 0
+#define MODE_NTSC40x24 0 ///< NTSC 40x24 pixel mode
 
 static const struct {
   uint16_t timerPeriod;    // CPU ticks per pixel clock (minus 1)
@@ -175,18 +196,20 @@ void Adafruit_CompositeVideo::drawPixel(int16_t x, int16_t y, uint16_t color) {
 // raster size is narrower than this (40 pixels).
 #define NTSC_EQ_HALFLINE25                                                     \
   NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
-      N_, N_, N_, N_, N_, N_
+      N_, N_, N_, N_, N_, N_ ///< One-half vsync scanline
 #define NTSC_SERRATION_HALFLINE25                                              \
   NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS,  \
-      NS, NS, NS, N_, N_, N_
+      NS, NS, NS, N_, N_, N_ ///< Different one-half vsync scanline
 #define NTSC_BLANK_LINE50                                                      \
   NS, NS, NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
       N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
-      N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_
+      N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_ ///< Full line blank
 #define NTSC_EMPTY_LINE50                                                      \
   NS, NS, NS, NS, N_, N_, N_, N_, N_, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK,  \
       NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK,  \
-      NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, N_
+      NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, N_ ///< Full line black
+
+// NTSC sync (NS), blank (N_), black (NK) and white (NW) levels
 
 // Pixel clocking data for the whole odd & even vertical sync periods...
 static const uint16_t
@@ -213,16 +236,19 @@ static const uint16_t
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
-            NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, // Lines 10-20
-            // The 11 lines above (10-20) are part of the vertical blank.
-            // Video at top of field could then start...but the next 10 lines
-            // here
-            // are also blank to center the 24-row pixel data vertically:
+            NTSC_BLANK_LINE50,
+            NTSC_BLANK_LINE50, // Lines 10-20
+                               // The 11 lines above (10-20) are part of the
+                               // vertical blank. Video at top of field could
+                               // then start...but the next 10 lines here are
+                               // also blank to center the 24-row pixel data
+                               // vertically:
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
             NTSC_BLANK_LINE50, NTSC_BLANK_LINE50, NTSC_BLANK_LINE50,
             NTSC_BLANK_LINE50 // Lines 21-30
-            // Pixel data then occupies lines 31-246 (216 lines; 24*9)
+                              // Pixel data then occupies lines 31-246 (216
+                              // lines; 24*9)
 },
     NTSC40x24vsyncEven[] = {
         // These 16 blank lines (247-262) are the bottom of the *prior* (odd)
@@ -262,7 +288,7 @@ static const uint16_t
 // Until if/when proper double-buffering is implemented, this is a
 // Kludgey McKludgeface thing for polling for odd/even vertical sync
 // events.  Don't get comfortable with it, this is going away.
-volatile uint8_t vBlank = 0;
+volatile uint8_t vBlank = 0; ///< Current field index
 static const uint8_t vBlank1 = 1, vBlank2 = 2;
 
 // Adafruit_NTSC40x24 class ------------------------------------------------
