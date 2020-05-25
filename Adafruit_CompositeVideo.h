@@ -16,27 +16,28 @@
 #ifndef _ADAFRUIT_COMPOSITEVIDEO_H_
 #define _ADAFRUIT_COMPOSITEVIDEO_H_
 
-#include <Adafruit_ZeroDMA.h>
 #include <Adafruit_GFX.h>
+#include <Adafruit_ZeroDMA.h>
 
 class Adafruit_CompositeVideo : public Adafruit_GFX {
- public:
+public:
   Adafruit_CompositeVideo(uint8_t mode, int16_t width, int16_t height);
   boolean begin(void);
-  void    drawPixel(int16_t x, int16_t y, uint16_t color);
- protected:
-  const uint8_t     mode;
-  Adafruit_ZeroDMA  dma;
-  DmacDescriptor   *descriptor;
-  uint16_t         *frameBuffer;
+  void drawPixel(int16_t x, int16_t y, uint16_t color);
+
+protected:
+  const uint8_t mode;
+  Adafruit_ZeroDMA dma;
+  DmacDescriptor *descriptor;
+  uint16_t *frameBuffer;
 };
 
 class Adafruit_NTSC40x24 : public Adafruit_CompositeVideo {
- public:
+public:
   Adafruit_NTSC40x24();
   boolean begin(void);
-  void    clear(void);
-  void    setBlank(uint8_t value);
+  void clear(void);
+  void setBlank(uint8_t value);
   uint8_t getBlank(void);
 };
 
