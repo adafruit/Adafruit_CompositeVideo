@@ -7,7 +7,7 @@
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_CompositeVideo.h>
-#include <fonts/FreeSerifItalic18pt7b.h>
+#include <Fonts/FreeSerifItalic18pt7b.h>
 
 Adafruit_NTSC40x24 display; // NTSC 40x24 currently the only supported type
 

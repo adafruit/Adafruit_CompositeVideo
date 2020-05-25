@@ -1,4 +1,5 @@
-# Adafruit_CompositeVideo
+# Adafruit_CompositeVideo [![Build Status](https://github.com/adafruit/Adafruit_CompositeVideo/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/adafruit/Adafruit_CompositeVideo/actions)
+
 Composite video output from M0 microcontrollers: Circuit Playground Express (not 'classic'), Feather M0, Arduino Zero, etc. Requires latest Adafruit_GFX and Adafruit_ZeroDMA libraries.
 
 Gator-clip composite video 'tip' to pin A0, 'ring' to GND. Handles grayscale NTSC video, 40x24 pixels, usable area may be smaller due to overscan. This is a hack and is NOT guaranteed to work on all composite displays!
