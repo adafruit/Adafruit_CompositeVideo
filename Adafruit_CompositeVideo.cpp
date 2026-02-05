@@ -103,36 +103,41 @@ boolean Adafruit_CompositeVideo::begin(void) {
   // Big allocation --------------------------------------------------------
 
   // DMA descriptor list MUST be 128-bit (16 byte) aligned!
-  if (!(descriptor = (DmacDescriptor*)memalign(
+  if (!(descriptor = (DmacDescriptor *)memalign(
             16,
             sizeof(DmacDescriptor) * videoSpec[mode].numDescriptors +
                 sizeof(uint16_t) * videoSpec[mode].rowPixelClocks * HEIGHT)))
     return false;
 
   // Frame buffer follows descriptor list.
-  frameBuffer = (uint16_t*)&descriptor[videoSpec[mode].numDescriptors];
+  frameBuffer = (uint16_t *)&descriptor[videoSpec[mode].numDescriptors];
 
   // Timer init ------------------------------------------------------------
   // TC5 is used; this will knock out the Tone library
 
   GCLK->CLKCTRL.reg = (uint16_t)(GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 |
                                  GCLK_CLKCTRL_ID(GCM_TC4_TC5));
-  while (GCLK->STATUS.bit.SYNCBUSY == 1) {}
+  while (GCLK->STATUS.bit.SYNCBUSY == 1) {
+  }
 
   TC5->COUNT16.CTRLA.reg &= ~TC_CTRLA_ENABLE; // Disable TCx to config it
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {}
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CTRLA.reg =     // Configure timer counter
       TC_CTRLA_MODE_COUNT16 |  // 16-bit counter mode
       TC_CTRLA_WAVEGEN_MFRQ |  // Match Frequency mode
       TC_CTRLA_PRESCALER_DIV1; // 1:1 Prescale
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {}
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CC[0].reg = videoSpec[mode].timerPeriod;
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {}
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE; // Re-enable TCx
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {}
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   // DAC INIT --------------------------------------------------------------
 
@@ -144,7 +149,8 @@ boolean Adafruit_CompositeVideo::begin(void) {
   analogWrite(A0, 512);      // ain't nobody got time for that!
 #if DAC_MAX == 1023
   DAC->CTRLB.bit.REFSEL = 0; // VMAX = 1.0V
-  while (DAC->STATUS.bit.SYNCBUSY) {}
+  while (DAC->STATUS.bit.SYNCBUSY) {
+  }
 #endif
 
   // DMA transfer job is NOT started here!  That's done in subclass
@@ -161,20 +167,20 @@ void Adafruit_CompositeVideo::drawPixel(int16_t x, int16_t y, uint16_t color) {
 
   int16_t t;
   switch (rotation) {
-    case 1:
-      t = x;
-      x = WIDTH - 1 - y;
-      y = t;
-      break;
-    case 2:
-      x = WIDTH - 1 - x;
-      y = HEIGHT - 1 - y;
-      break;
-    case 3:
-      t = x;
-      x = y;
-      y = HEIGHT - 1 - t;
-      break;
+  case 1:
+    t = x;
+    x = WIDTH - 1 - y;
+    y = t;
+    break;
+  case 2:
+    x = WIDTH - 1 - x;
+    y = HEIGHT - 1 - y;
+    break;
+  case 3:
+    t = x;
+    x = y;
+    y = HEIGHT - 1 - t;
+    break;
   }
 
   frameBuffer[y * videoSpec[mode].rowPixelClocks + x +
@@ -187,19 +193,19 @@ void Adafruit_CompositeVideo::drawPixel(int16_t x, int16_t y, uint16_t color) {
 // 25 and 50 in this case refer to the total number of pixel clocks per
 // line, which includes horizontal sync and overscan.  The available drawable
 // raster size is narrower than this (40 pixels).
-#define NTSC_EQ_HALFLINE25                                                    \
-  NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, \
+#define NTSC_EQ_HALFLINE25                                                     \
+  NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
       N_, N_, N_, N_, N_, N_ ///< One-half vsync scanline
-#define NTSC_SERRATION_HALFLINE25                                             \
-  NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, \
+#define NTSC_SERRATION_HALFLINE25                                              \
+  NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS, NS,  \
       NS, NS, NS, N_, N_, N_ ///< Different one-half vsync scanline
-#define NTSC_BLANK_LINE50                                                     \
-  NS, NS, NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, \
-      N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, \
+#define NTSC_BLANK_LINE50                                                      \
+  NS, NS, NS, NS, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
+      N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_,  \
       N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_, N_ ///< Full line blank
-#define NTSC_EMPTY_LINE50                                                     \
-  NS, NS, NS, NS, N_, N_, N_, N_, N_, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, \
-      NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, \
+#define NTSC_EMPTY_LINE50                                                      \
+  NS, NS, NS, NS, N_, N_, N_, N_, N_, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK,  \
+      NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK,  \
       NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, NK, N_ ///< Full line black
 
 // NTSC sync (NS), blank (N_), black (NK) and white (NW) levels
@@ -303,7 +309,7 @@ boolean Adafruit_NTSC40x24::begin(void) {
   // is 50 words (2 bytes ea) * 24 lines = 2400 bytes.
   // 8720 + 1 + 2400 = 11,121 bytes!
 
-  DmacDescriptor* desc;
+  DmacDescriptor *desc;
 
   for (uint16_t i = 0; i < videoSpec[mode].numDescriptors; i++) {
     desc = &descriptor[i];
@@ -392,11 +398,7 @@ void Adafruit_NTSC40x24::clear(void) {
 }
 
 // Hacky stuff, don't use this
-void Adafruit_NTSC40x24::setBlank(uint8_t value) {
-  vBlank = value;
-}
+void Adafruit_NTSC40x24::setBlank(uint8_t value) { vBlank = value; }
 
 // Ditto
-uint8_t Adafruit_NTSC40x24::getBlank(void) {
-  return vBlank;
-}
+uint8_t Adafruit_NTSC40x24::getBlank(void) { return vBlank; }

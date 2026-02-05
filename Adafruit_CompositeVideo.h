@@ -28,7 +28,7 @@
  *         providing bitmapped low-resolution grayscale graphics.
  */
 class Adafruit_CompositeVideo : public Adafruit_GFX {
- public:
+public:
   /**
    * @brief  Construct a new Adafruit_CompositeVideo object.
    * @param  mode    Video mode, must be 0 (NTSC, others might be added
@@ -52,11 +52,11 @@ class Adafruit_CompositeVideo : public Adafruit_GFX {
    */
   void drawPixel(int16_t x, int16_t y, uint16_t color);
 
- protected:
+protected:
   const uint8_t mode;         ///< Video mode, only MODE_NTSC40x24 right now
   Adafruit_ZeroDMA dma;       ///< SAMD DMA object
-  DmacDescriptor* descriptor; ///< DMA descriptor list
-  uint16_t* frameBuffer;      ///< Pixel data
+  DmacDescriptor *descriptor; ///< DMA descriptor list
+  uint16_t *frameBuffer;      ///< Pixel data
 };
 
 /**
@@ -64,7 +64,7 @@ class Adafruit_CompositeVideo : public Adafruit_GFX {
            Adafruit_CompositeVideo.
  */
 class Adafruit_NTSC40x24 : public Adafruit_CompositeVideo {
- public:
+public:
   /**
    * @brief Construct a new Adafruit_NTSC40x24 object.
    */

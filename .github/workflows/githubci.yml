@@ -6,20 +6,17 @@ jobs:
   clang-format:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-    - uses: actions/checkout@v4
-      with:
-        repository: adafruit/ci-arduino
-        path: ci
-    - name: clang-format
-      run: python3 ci/run-clang-format.py -e "ci/*" -e "bin/*" -r .
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: adafruit/ci-arduino
+          path: ci
+      - name: Check code formatting with clang-format
+        run: python3 ci/run-clang-format.py -e "ci/*" -e "bin/*" -r .
 
   build:
-    runs-on: ubuntu-latest
     needs: clang-format
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/setup-python@v4
