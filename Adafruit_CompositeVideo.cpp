@@ -49,7 +49,6 @@
 // Allowing space for the sync and blank voltages, there are ~220 available
 // brightness levels (not 256).  GFX functions take care of brightness
 // scaling, so use 0 for black and 255 for white as normal.
-//#define DAC_MAX 1023           ///< Use 1.0 V DAC analog ref
 #define DAC_MAX (1023 * 10 / 33) ///< Use subset of 3.3V DAC
 
 // Currently only one video format & resolution is supported, and maybe
@@ -118,29 +117,29 @@ boolean Adafruit_CompositeVideo::begin(void) {
 
   GCLK->CLKCTRL.reg = (uint16_t)(GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 |
                                  GCLK_CLKCTRL_ID(GCM_TC4_TC5));
-  while (GCLK->STATUS.bit.SYNCBUSY == 1)
-    ;
+  while (GCLK->STATUS.bit.SYNCBUSY == 1) {
+  }
 
   TC5->COUNT16.CTRLA.reg &= ~TC_CTRLA_ENABLE; // Disable TCx to config it
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY)
-    ;
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CTRLA.reg =     // Configure timer counter
       TC_CTRLA_MODE_COUNT16 |  // 16-bit counter mode
       TC_CTRLA_WAVEGEN_MFRQ |  // Match Frequency mode
       TC_CTRLA_PRESCALER_DIV1; // 1:1 Prescale
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY)
-    ;
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CC[0].reg = videoSpec[mode].timerPeriod;
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY)
-    ;
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
   TC5->COUNT16.CTRLA.reg |= TC_CTRLA_ENABLE; // Re-enable TCx
-  while (TC5->COUNT16.STATUS.bit.SYNCBUSY)
-    ;
+  while (TC5->COUNT16.STATUS.bit.SYNCBUSY) {
+  }
 
-    // DAC INIT --------------------------------------------------------------
+  // DAC INIT --------------------------------------------------------------
 
 #ifdef ADAFRUIT_CIRCUITPLAYGROUND_M0
   pinMode(11, OUTPUT);
@@ -150,8 +149,8 @@ boolean Adafruit_CompositeVideo::begin(void) {
   analogWrite(A0, 512);      // ain't nobody got time for that!
 #if DAC_MAX == 1023
   DAC->CTRLB.bit.REFSEL = 0; // VMAX = 1.0V
-  while (DAC->STATUS.bit.SYNCBUSY)
-    ;
+  while (DAC->STATUS.bit.SYNCBUSY) {
+  }
 #endif
 
   // DMA transfer job is NOT started here!  That's done in subclass
